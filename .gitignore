@@ -4,6 +4,7 @@ __pycache__/
 *.pyd
 .Python
 env/
+venv310/
 venv/
 ENV/
 .env

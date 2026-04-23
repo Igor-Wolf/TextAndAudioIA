@@ -12,6 +12,11 @@ import tempfile
 import os
 from pathlib import Path
 
+
+import librosa
+import soundfile as sf
+import io
+
 #--------------------------
 
 from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor, pipeline
@@ -48,10 +53,26 @@ def create_audio(
      language: Literal["en", "pt", "es"] = Form("pt"),
     #  voice_to_be_cloned: UploadFile = File(...)
 ):
-
+    
     voice_path = Path("./assets/freya.wav")
     with open(voice_path, "rb") as f:
         voice_to_be_cloned = f.read()
+
+    # 1. Carrega o áudio original de bytes
+    y, sr = librosa.load(io.BytesIO(voice_to_be_cloned), sr=None)
+
+    # 2. Altere o pitch (exemplo: +2 semitons)
+    y = y.astype(np.float32)
+    y_pitch = librosa.effects.pitch_shift(y, sr=sr, n_steps=20)
+
+    # 3. Altere a velocidade (exemplo: 0.9 = 90% da velocidade original)
+    y_speed = librosa.effects.time_stretch(y_pitch, rate=1.5)
+
+    # 4. Salva o áudio modificado num arquivo temporário para passar pro Coqui
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_mod_voice:
+        sf.write(temp_mod_voice.name, y_speed, sr)
+        temp_clone_voice_path = temp_mod_voice.name
+    
 
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as temp_clone_voice:
         # temp_clone_voice.write(voice_to_be_cloned.file.read())
@@ -59,7 +80,7 @@ def create_audio(
         temp_clone_voice_path = temp_clone_voice.name
 
     try:
-        text = text.replace("*", "").replace("\n", "").replace('"', "").replace("...",".")
+        text = text.replace("*", "").replace("\\n", "").replace('"', "").replace("...",".")
         text = text.replace("\\", "").replace("nn", "")
         text = text.replace('.', ';\n')
         audio = tts.tts(

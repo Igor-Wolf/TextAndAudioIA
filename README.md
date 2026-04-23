@@ -38,3 +38,11 @@ fazer rodar a fastapi:
 fastapi dev main.py --port 8085
 
 $env:Path += ";C:\ffmpeg\bin"
+
+
+
+
+python -m pip install fastapi[all] uvicorn
+
+python -m uvicorn main:app --reload --port 8085
+
